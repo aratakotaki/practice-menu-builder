@@ -85,14 +85,30 @@ app.post("/make-server-791d0b68/menus", async (c) => {
 
   try {
     const body = await c.req.json();
-    const { menu } = body;
+    const { menu, allowOverwrite } = body;
     
     if (!menu || !menu.id) {
       return c.json({ error: 'Menu data with ID required' }, 400);
     }
 
-    const key = `user:${user.id}:menu:${menu.id}`;
-    await kv.set(key, menu);
+    // Extract the date portion (YYYY-MM-DD) from baseDate for key-based deduplication
+    const dateStr = menu.baseDate ? menu.baseDate.split('T')[0] : null;
+    if (!dateStr) {
+      return c.json({ error: 'Menu must include a valid baseDate' }, 400);
+    }
+
+    const dateKey = `user:${user.id}:menu:date:${dateStr}`;
+
+    // When allowOverwrite is explicitly false, prevent saving over an existing date entry
+    if (allowOverwrite === false) {
+      const existing = await kv.get(dateKey);
+      if (existing) {
+        return c.json({ error: 'duplicate_date', message: 'この日にはすでにメニューが存在します', existingMenuId: existing?.id ?? dateStr }, 409);
+      }
+    }
+
+    // Store with date-based key for deduplication and better organisation
+    await kv.set(dateKey, menu);
     return c.json({ success: true });
   } catch (err: any) {
     console.error("KV Error:", err);
@@ -164,10 +180,17 @@ app.get("/make-server-791d0b68/menus/:id", async (c) => {
   }
 
   const menuId = c.req.param('id');
-  const key = `user:${user.id}:menu:${menuId}`;
+
+  // Support both new date-based keys (user:{id}:menu:date:{YYYY-MM-DD})
+  // and legacy UUID-based keys (user:{id}:menu:{uuid}) for backward compatibility
+  const dateKey = `user:${user.id}:menu:date:${menuId}`;
+  const legacyKey = `user:${user.id}:menu:${menuId}`;
   
   try {
-    const menu = await kv.get(key);
+    let menu = await kv.get(dateKey);
+    if (!menu) {
+      menu = await kv.get(legacyKey);
+    }
     if (!menu) {
       return c.json({ error: 'Menu not found' }, 404);
     }
@@ -206,10 +229,15 @@ app.delete("/make-server-791d0b68/menus/:id", async (c) => {
   }
 
   const menuId = c.req.param('id');
-  const key = `user:${user.id}:menu:${menuId}`;
+
+  // Support both new date-based keys and legacy UUID-based keys
+  const dateKey = `user:${user.id}:menu:date:${menuId}`;
+  const legacyKey = `user:${user.id}:menu:${menuId}`;
   
   try {
-    await kv.del(key);
+    // Delete from date-based key; also attempt legacy key for backward compatibility
+    await kv.del(dateKey);
+    await kv.del(legacyKey);
     return c.json({ success: true });
   } catch (err: any) {
     console.error("KV Error:", err);

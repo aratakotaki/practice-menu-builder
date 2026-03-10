@@ -8,12 +8,19 @@ import { format, parseISO, isSameDay, startOfToday, isAfter } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Toaster } from 'sonner';
 import { Layout } from '../components/Layout';
+import { NewMenuModal } from '../components/NewMenuModal';
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNewMenuModalOpen, setIsNewMenuModalOpen] = useState(false);
   const navigate = useNavigate();
+
+  const handleNewMenuConfirm = (dateStr: string, sourceMenu: Menu | null) => {
+    setIsNewMenuModalOpen(false);
+    navigate('/editor', { state: { newDate: dateStr, sourceMenu } });
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -78,6 +85,7 @@ export default function Home() {
   }, [menus]);
 
   return (
+    <>
     <Layout showFab={true}>
       <Toaster position="top-right" richColors />
 
@@ -155,7 +163,7 @@ export default function Home() {
                   <p className="text-sm text-gray-600 mb-1 font-bold">予定されている練習はありません</p>
                   <p className="text-xs text-gray-500 mb-4">新しい練習メニューを作成して始めましょう</p>
                   <button
-                    onClick={() => navigate('/editor')}
+                    onClick={() => setIsNewMenuModalOpen(true)}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm inline-flex items-center gap-2"
                   >
                     メニューを作成する
@@ -182,5 +190,12 @@ export default function Home() {
         </div>
       </div>
     </Layout>
+
+    <NewMenuModal
+      isOpen={isNewMenuModalOpen}
+      onClose={() => setIsNewMenuModalOpen(false)}
+      onConfirm={handleNewMenuConfirm}
+    />
+    </>
   );
 }
