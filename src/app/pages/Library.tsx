@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Loader2, BookOpen, Calendar, Clock, ChevronRight, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 import { Menu } from '../types';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -25,9 +24,9 @@ export default function Library() {
   const fetchMenus = async (session: any) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/make-server-791d0b68/menus`, {
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'X-User-Token': session.access_token
         }
       });
@@ -56,10 +55,10 @@ export default function Library() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus/${menuId}`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/make-server-791d0b68/menus/${menuId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'X-User-Token': session.access_token
         }
       });
