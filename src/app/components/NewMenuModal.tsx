@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { X, Loader2, Calendar, Clock, Copy, FilePlus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { Menu } from '../types';
 
 interface NewMenuModalProps {
@@ -35,10 +34,10 @@ export function NewMenuModal({ isOpen, onClose, onConfirm, preselectedDate }: Ne
         return;
       }
       const res = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`,
+        `${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/menus`,
         {
           headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
             'X-User-Token': session.access_token,
           },
         }

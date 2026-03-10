@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 import { supabase } from '../../lib/supabase';
 import { X, Loader2, Calendar, Clock, Trash2 } from 'lucide-react';
 import { Drawer } from 'vaul';
@@ -23,9 +22,9 @@ export function SavedMenusModal({ isOpen, onClose, onLoad }: SavedMenusModalProp
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+      const response = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/menus`, {
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
           'X-User-Token': session.access_token
         }
       });
@@ -58,10 +57,10 @@ export function SavedMenusModal({ isOpen, onClose, onLoad }: SavedMenusModalProp
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus/${id}`, {
+      const response = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/menus/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
           'X-User-Token': session.access_token
         }
       });
