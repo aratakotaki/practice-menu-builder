@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { ArrowLeft, Loader2, PieChart as PieChartIcon, Menu as MenuIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { supabase } from '../../lib/supabase';
-import { projectId, publicAnonKey } from '../../../utils/supabase/info';
+import { supabaseUrl, publicAnonKey } from '../../../utils/supabase/info';
 import { Menu, CATEGORIES as INITIAL_CATEGORIES, Category, Drill } from '../types';
 
 // Map Tailwind colors to hex for Recharts
@@ -54,7 +54,7 @@ export default function Analytics() {
 
   const fetchMenus = async (session: any) => {
     try {
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'X-User-Token': session.access_token
@@ -78,7 +78,7 @@ export default function Analytics() {
 
   const loadUserLibrary = async (session: any) => {
     try {
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/library`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/library`, {
         headers: { 
           'Authorization': `Bearer ${publicAnonKey}`,
           'X-User-Token': session.access_token
