@@ -4,7 +4,7 @@ import { format, parseISO, isSameDay, startOfToday, isAfter } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useNavigate } from 'react-router';
 import { supabase } from '../../lib/supabase';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { supabaseUrl, publicAnonKey } from '/utils/supabase/info';
 import { Menu } from '../types';
 import { Plus, Edit, Calendar as CalendarIcon, Loader2, Clock, Trash2, ArrowRight } from 'lucide-react';
 import 'react-day-picker/dist/style.css';
@@ -57,7 +57,7 @@ export default function Dashboard() {
   const fetchMenus = async (session: any) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'X-User-Token': session.access_token
@@ -87,7 +87,7 @@ export default function Dashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus/${menuId}`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus/${menuId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,

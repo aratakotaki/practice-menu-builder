@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Calendar, User, LogIn, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { supabaseUrl, publicAnonKey } from '/utils/supabase/info';
 import { Menu } from '../types';
 import { format, parseISO, isSameDay, startOfToday, isAfter } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -48,7 +48,7 @@ export default function Home() {
   const fetchMenus = async (session: any) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'X-User-Token': session.access_token
