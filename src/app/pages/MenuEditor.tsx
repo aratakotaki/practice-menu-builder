@@ -544,7 +544,7 @@ export default function MenuEditor() {
     if (isSilent) setIsSaving(true);
 
     // Use the date string as the menu ID (YYYY-MM-DD) so each date has at most one menu
-    const dateStr = format(isNew ? baseDate : (baseDate), 'yyyy-MM-dd');
+    const dateStr = format(baseDate, 'yyyy-MM-dd');
     const idToUse = isNew ? dateStr : (menuId || dateStr);
     
     let menuName = title;
@@ -579,6 +579,11 @@ export default function MenuEditor() {
         updatedAt: new Date().toISOString()
       };
 
+      // allowOverwrite: false only when creating a brand-new menu (no existing menuId in URL,
+      // i.e. the user has not yet saved this menu once). When editing an existing menu (menuId
+      // is in the URL) we always allow overwriting the same-date entry.
+      const shouldAllowOverwrite = !isNew || !!menuId;
+
       const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
         method: 'POST',
         headers: {
@@ -586,8 +591,7 @@ export default function MenuEditor() {
           'Authorization': `Bearer ${publicAnonKey}`,
           'X-User-Token': session.access_token
         },
-        // allowOverwrite: false only when creating a brand-new menu (no existing menuId in URL)
-        body: JSON.stringify({ menu: menuData, allowOverwrite: !isNew || !!menuId })
+        body: JSON.stringify({ menu: menuData, allowOverwrite: shouldAllowOverwrite })
       });
 
       if (response.status === 409) {
@@ -614,7 +618,7 @@ export default function MenuEditor() {
           if (!overwriteRes.ok) throw new Error(`Server error ${overwriteRes.status}`);
         } else {
           // Silent save: skip quietly to avoid disrupting the user
-          if (isSilent) setIsSaving(false);
+          setIsSaving(false);
           return;
         }
       } else if (!response.ok) {

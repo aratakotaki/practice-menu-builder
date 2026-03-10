@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import { X, Loader2, Calendar, Clock, Copy, FilePlus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -25,18 +25,7 @@ export function NewMenuModal({ isOpen, onClose, onConfirm, preselectedDate }: Ne
   const [selectedSourceMenu, setSelectedSourceMenu] = useState<Menu | null>(null);
   const [menusError, setMenusError] = useState<string | null>(null);
 
-  // Sync preselectedDate when it changes
-  useEffect(() => {
-    if (preselectedDate) setSelectedDate(preselectedDate);
-  }, [preselectedDate]);
-
-  // Fetch past menus when switching to duplicate mode
-  useEffect(() => {
-    if (!isOpen || mode !== 'duplicate') return;
-    fetchMenus();
-  }, [isOpen, mode]);
-
-  const fetchMenus = async () => {
+  const fetchMenus = useCallback(async () => {
     setIsLoadingMenus(true);
     setMenusError(null);
     try {
@@ -66,7 +55,18 @@ export function NewMenuModal({ isOpen, onClose, onConfirm, preselectedDate }: Ne
     } finally {
       setIsLoadingMenus(false);
     }
-  };
+  }, []);
+
+  // Sync preselectedDate when it changes
+  useEffect(() => {
+    if (preselectedDate) setSelectedDate(preselectedDate);
+  }, [preselectedDate]);
+
+  // Fetch past menus when switching to duplicate mode
+  useEffect(() => {
+    if (!isOpen || mode !== 'duplicate') return;
+    fetchMenus();
+  }, [isOpen, mode, fetchMenus]);
 
   const handleConfirm = () => {
     if (!selectedDate) return;

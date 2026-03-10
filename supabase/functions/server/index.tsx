@@ -103,7 +103,7 @@ app.post("/make-server-791d0b68/menus", async (c) => {
     if (allowOverwrite === false) {
       const existing = await kv.get(dateKey);
       if (existing) {
-        return c.json({ error: 'duplicate_date', message: 'この日にはすでにメニューが存在します', existingMenuId: existing.id }, 409);
+        return c.json({ error: 'duplicate_date', message: 'この日にはすでにメニューが存在します', existingMenuId: existing?.id ?? dateStr }, 409);
       }
     }
 
