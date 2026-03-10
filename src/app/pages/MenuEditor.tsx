@@ -9,7 +9,6 @@ import { twMerge } from 'tailwind-merge';
 import { LibraryManager } from '../components/LibraryManager';
 import { AuthModal } from '../components/AuthModal';
 import { SavedMenusModal } from '../components/SavedMenusModal';
-import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { supabase } from '../../lib/supabase';
 import { Toaster, toast } from 'sonner';
 import svgPaths from '../../imports/svg-gnadtnsjru';
@@ -388,9 +387,9 @@ export default function MenuEditor() {
              const { data: { session } } = await supabase.auth.getSession();
              if (!session) return;
 
-             const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus/${menuId}`, {
+             const res = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/menus/${menuId}`, {
                  headers: {
-                    'Authorization': `Bearer ${publicAnonKey}`,
+                    'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
                     'X-User-Token': session.access_token
                  }
              });
@@ -584,11 +583,11 @@ export default function MenuEditor() {
       // is in the URL) we always allow overwriting the same-date entry.
       const shouldAllowOverwrite = !isNew || !!menuId;
 
-      const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+      const response = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/menus`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
           'X-User-Token': session.access_token
         },
         body: JSON.stringify({ menu: menuData, allowOverwrite: shouldAllowOverwrite })
@@ -606,11 +605,11 @@ export default function MenuEditor() {
             return;
           }
           // User chose to overwrite – retry with allowOverwrite: true
-          const overwriteRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+          const overwriteRes = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/menus`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
+              'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
               'X-User-Token': session.access_token
             },
             body: JSON.stringify({ menu: menuData, allowOverwrite: true })
@@ -684,11 +683,11 @@ export default function MenuEditor() {
   };
 
   const loadUserLibrary = async (session: any) => {
-    if (!session || !projectId) return;
+    if (!session || !process.env.SUPABASE_URL) return;
     try {
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/library`, {
+      const res = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/library`, {
         headers: { 
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
           'X-User-Token': session.access_token
         }
       });
@@ -708,14 +707,14 @@ export default function MenuEditor() {
     setCategories(newCats);
     setLibraryDrills(newDrills);
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session || !projectId) return;
+    if (!session || !process.env.SUPABASE_URL) return;
     
     try {
-      const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/library`, {
+      const res = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/library`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}`,
+          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
           'X-User-Token': session.access_token
         },
         body: JSON.stringify({ categories: newCats, drills: newDrills })
@@ -787,11 +786,11 @@ export default function MenuEditor() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("No session");
 
-        const res = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+        const res = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/menus`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${publicAnonKey}`,
+                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
                 'X-User-Token': session.access_token
             },
             body: JSON.stringify({ menu: menuData, allowOverwrite: false })
@@ -807,11 +806,11 @@ export default function MenuEditor() {
                 navigate(`/editor/${existingId}`);
             } else {
                 // Overwrite
-                const overwriteRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+                const overwriteRes = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/menus`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${publicAnonKey}`,
+                        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
                         'X-User-Token': session.access_token
                     },
                     body: JSON.stringify({ menu: menuData, allowOverwrite: true })

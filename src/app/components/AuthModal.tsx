@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { projectId, publicAnonKey } from '../../../utils/supabase/info';
 import { X, Mail, Lock, Loader2 } from 'lucide-react';
 import { Drawer } from 'vaul';
 
 const supabase = createClient(
-  `https://${projectId}.supabase.co`,
-  publicAnonKey
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 interface AuthModalProps {
@@ -40,11 +39,11 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
         }
       } else {
         // Signup via backend endpoint
-        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/signup`, {
+        const response = await fetch(`${process.env.SUPABASE_URL}/functions/v1/make-server-791d0b68/signup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
           },
           body: JSON.stringify({ email, password }),
         });
