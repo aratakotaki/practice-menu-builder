@@ -327,18 +327,32 @@ export default function MenuEditor() {
   const { menuId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
+  // Read creation context passed from NewMenuModal (only relevant when no menuId in URL)
+  const locationState = location.state as { newDate?: string; sourceMenu?: import('../types').Menu } | null;
+  const sourceMenu = !menuId ? (locationState?.sourceMenu ?? null) : null;
+  const initialDate = !menuId && locationState?.newDate
+    ? new Date(locationState.newDate + 'T00:00:00')
+    : new Date();
+
   // State
-  const [items, setItems] = useState<TimelineItem[]>(() =>
-    INITIAL_DRILLS.map((d, i) => ({ ...d, uniqueId: `${d.id}-${Date.now()}-${i}` }))
-  );
+  const [items, setItems] = useState<TimelineItem[]>(() => {
+    if (sourceMenu?.items?.length) {
+      // Deep-copy items from the source menu with fresh uniqueIds
+      return sourceMenu.items.map((item, i) => ({
+        ...item,
+        uniqueId: `${item.id}-${Date.now()}-${i}`,
+      }));
+    }
+    return INITIAL_DRILLS.map((d, i) => ({ ...d, uniqueId: `${d.id}-${Date.now()}-${i}` }));
+  });
   const [categories, setCategories] = useState<Category[]>(INITIAL_CATEGORIES);
   const [libraryDrills, setLibraryDrills] = useState<Drill[]>(INITIAL_DRILLS);
-  const [baseDate, setBaseDate] = useState(new Date());
-  const [baseStartTime, setBaseStartTime] = useState('12:00');
-  const [title, setTitle] = useState('午後練');
-  const [noteTitle, setNoteTitle] = useState('レシーブの日');
-  const [noteBody, setNoteBody] = useState('跳び箱3つ，得点板お願いします');
+  const [baseDate, setBaseDate] = useState(initialDate);
+  const [baseStartTime, setBaseStartTime] = useState(sourceMenu?.baseStartTime ?? '12:00');
+  const [title, setTitle] = useState(sourceMenu?.title ?? '午後練');
+  const [noteTitle, setNoteTitle] = useState(sourceMenu?.noteTitle ?? 'レシーブの日');
+  const [noteBody, setNoteBody] = useState(sourceMenu?.noteBody ?? '跳び箱3つ，得点板お願いします');
 
   // UI State
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
@@ -529,7 +543,9 @@ export default function MenuEditor() {
 
     if (isSilent) setIsSaving(true);
 
-    const idToUse = isNew ? crypto.randomUUID() : (menuId || crypto.randomUUID());
+    // Use the date string as the menu ID (YYYY-MM-DD) so each date has at most one menu
+    const dateStr = format(isNew ? baseDate : (baseDate), 'yyyy-MM-dd');
+    const idToUse = isNew ? dateStr : (menuId || dateStr);
     
     let menuName = title;
     if (isNew && !isSilent) {
@@ -570,10 +586,40 @@ export default function MenuEditor() {
           'Authorization': `Bearer ${publicAnonKey}`,
           'X-User-Token': session.access_token
         },
-        body: JSON.stringify({ menu: menuData })
+        // allowOverwrite: false only when creating a brand-new menu (no existing menuId in URL)
+        body: JSON.stringify({ menu: menuData, allowOverwrite: !isNew || !!menuId })
       });
 
-      if (!response.ok) throw new Error(`Server error ${response.status}`);
+      if (response.status === 409) {
+        const data = await response.json();
+        const existingId = data.existingMenuId ?? dateStr;
+        if (!isSilent) {
+          const goToExisting = window.confirm(
+            'この日にはすでにメニューが存在します。既存のメニューを開きますか？\n（「キャンセル」を押すと上書きして保存します）'
+          );
+          if (goToExisting) {
+            navigate(`/editor/${existingId}`);
+            return;
+          }
+          // User chose to overwrite – retry with allowOverwrite: true
+          const overwriteRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${publicAnonKey}`,
+              'X-User-Token': session.access_token
+            },
+            body: JSON.stringify({ menu: menuData, allowOverwrite: true })
+          });
+          if (!overwriteRes.ok) throw new Error(`Server error ${overwriteRes.status}`);
+        } else {
+          // Silent save: skip quietly to avoid disrupting the user
+          if (isSilent) setIsSaving(false);
+          return;
+        }
+      } else if (!response.ok) {
+        throw new Error(`Server error ${response.status}`);
+      }
 
       // Update refs and state
       lastSavedStateRef.current = JSON.stringify(getCurrentState());
@@ -718,11 +764,12 @@ export default function MenuEditor() {
     }
     
     setIsSaving(true);
-    const newId = crypto.randomUUID();
+    // Use the new date string as the new menu ID
+    const newDateStr = format(newDate, 'yyyy-MM-dd');
     
     // Construct the new menu object using CURRENT state, but with NEW date
     const menuData = {
-        id: newId,
+        id: newDateStr,
         title,
         noteTitle,
         noteBody,
@@ -743,8 +790,35 @@ export default function MenuEditor() {
                 'Authorization': `Bearer ${publicAnonKey}`,
                 'X-User-Token': session.access_token
             },
-            body: JSON.stringify({ menu: menuData })
+            body: JSON.stringify({ menu: menuData, allowOverwrite: false })
         });
+
+        if (res.status === 409) {
+            const data = await res.json();
+            const existingId = data.existingMenuId ?? newDateStr;
+            const goToExisting = window.confirm(
+              'この日にはすでにメニューが存在します。既存のメニューを開きますか？\n（「キャンセル」を押すと上書きして保存します）'
+            );
+            if (goToExisting) {
+                navigate(`/editor/${existingId}`);
+            } else {
+                // Overwrite
+                const overwriteRes = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-791d0b68/menus`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${publicAnonKey}`,
+                        'X-User-Token': session.access_token
+                    },
+                    body: JSON.stringify({ menu: menuData, allowOverwrite: true })
+                });
+                if (!overwriteRes.ok) throw new Error("Failed to create new menu");
+                setBaseDate(newDate);
+                toast.success("新しい日付でメニューを作成しました（元のメニューは保持されます）");
+                navigate(`/editor/${newDateStr}`, { replace: true });
+            }
+            return;
+        }
 
         if (!res.ok) throw new Error("Failed to create new menu");
 
@@ -752,7 +826,7 @@ export default function MenuEditor() {
         setBaseDate(newDate);
         
         toast.success("新しい日付でメニューを作成しました（元のメニューは保持されます）");
-        navigate(`/editor/${newId}`, { replace: true });
+        navigate(`/editor/${newDateStr}`, { replace: true });
 
     } catch (e) {
         console.error(e);

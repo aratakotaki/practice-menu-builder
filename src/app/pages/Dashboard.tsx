@@ -10,13 +10,26 @@ import { Plus, Edit, Calendar as CalendarIcon, Loader2, Clock, Trash2, ArrowRigh
 import 'react-day-picker/dist/style.css';
 import { Toaster, toast } from 'sonner';
 import { Layout } from '../components/Layout';
+import { NewMenuModal } from '../components/NewMenuModal';
 
 export default function Dashboard() {
   const [menus, setMenus] = useState<Menu[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [isNewMenuModalOpen, setIsNewMenuModalOpen] = useState(false);
+  const [newMenuPreselectedDate, setNewMenuPreselectedDate] = useState<string | undefined>(undefined);
   const navigate = useNavigate();
+
+  const openNewMenuModal = (preselectedDate?: string) => {
+    setNewMenuPreselectedDate(preselectedDate);
+    setIsNewMenuModalOpen(true);
+  };
+
+  const handleNewMenuConfirm = (dateStr: string, sourceMenu: Menu | null) => {
+    setIsNewMenuModalOpen(false);
+    navigate('/editor', { state: { newDate: dateStr, sourceMenu } });
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -121,6 +134,7 @@ export default function Dashboard() {
   };
 
   return (
+    <>
     <Layout>
       <style>{`
         .rdp-day_hasMenu {
@@ -162,7 +176,7 @@ export default function Dashboard() {
              </h2>
              {user && (
                  <button 
-                   onClick={() => navigate('/editor')}
+                   onClick={() => openNewMenuModal(selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined)}
                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-full text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm"
                  >
                    <Plus className="w-4 h-4" /> 新規作成
@@ -273,7 +287,7 @@ export default function Dashboard() {
                <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-500 flex flex-col items-center justify-center min-h-[200px]">
                  <p className="mb-4">この日のメニューはありません</p>
                  <button 
-                   onClick={() => navigate('/editor')}
+                   onClick={() => openNewMenuModal(selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined)}
                    className="px-6 py-2 bg-blue-50 text-blue-600 rounded-full font-bold hover:bg-blue-100 transition-colors"
                  >
                    新しく作成する
@@ -325,5 +339,13 @@ export default function Dashboard() {
         </div>
       </div>
     </Layout>
+
+    <NewMenuModal
+      isOpen={isNewMenuModalOpen}
+      onClose={() => setIsNewMenuModalOpen(false)}
+      onConfirm={handleNewMenuConfirm}
+      preselectedDate={newMenuPreselectedDate}
+    />
+    </>
   );
 }
