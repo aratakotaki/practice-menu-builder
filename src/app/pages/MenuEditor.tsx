@@ -375,6 +375,9 @@ export default function MenuEditor() {
   // Auto Save & History
   const [isAutoSave, setIsAutoSave] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  // Real save outcome shown to the user. Previously the footer always read "保存済み"
+  // even when saves were failing (e.g. expired session) — masking silent data loss.
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved');
   const [past, setPast] = useState<MenuState[]>([]);
   const [future, setFuture] = useState<MenuState[]>([]);
   // When true, the next auto-save effect run is skipped: the state change came from
@@ -611,14 +614,21 @@ export default function MenuEditor() {
         menuName = input || title;
     }
 
+    setSaveStatus('saving');
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
+        // No valid session — surface it instead of silently pretending to save.
+        setSaveStatus('error');
+        setUser(null); // flips UI to logged-out and stops auto-save (gated by user)
         if (!isSilent) {
           toast.error('認証情報が見つかりません。再ログインしてください。');
-          setUser(null);
           setIsAuthModalOpen(true);
+        } else {
+          toast.error('セッションが切れたため保存できませんでした。ログインし直してください。');
         }
+        if (isSilent) setIsSaving(false);
         return;
       }
 
@@ -675,12 +685,25 @@ export default function MenuEditor() {
           setIsSaving(false);
           return;
         }
+      } else if (response.status === 401) {
+        // Auth was rejected — often just a stale access token mid-refresh. Surface it
+        // honestly as "未保存" instead of pretending to save, but do NOT force a logout:
+        // lastSavedStateRef is left untouched, so the next edit re-attempts the save with
+        // a freshly refreshed session. The in-progress edits stay in the editor either way.
+        setSaveStatus('error');
+        if (!isSilent) {
+          toast.error('保存できませんでした（セッション未確認）。ログインし直すと確実です。');
+          setIsAuthModalOpen(true);
+        }
+        if (isSilent) setIsSaving(false);
+        return;
       } else if (!response.ok) {
         throw new Error(`Server error ${response.status}`);
       }
 
       // Update refs and state
       lastSavedStateRef.current = JSON.stringify(getCurrentState());
+      setSaveStatus('saved');
       
       if (!isSilent) {
         toast.success(isNew ? '新しいメニューとして保存しました' : '上書き保存しました');
@@ -694,6 +717,7 @@ export default function MenuEditor() {
       
     } catch (err: any) {
       console.error("Save Error:", err);
+      setSaveStatus('error'); // keep the user logged in; the next edit retries the save
       if (!isSilent) toast.error(err.message);
     } finally {
       if (isSilent) setTimeout(() => setIsSaving(false), 500);
@@ -1201,13 +1225,20 @@ export default function MenuEditor() {
             </div>
             
             {isAutoSave && (
-               <div className="flex items-center gap-1 text-xs font-medium text-gray-400">
-                 {isSaving ? (
+               <div className={cn(
+                 "flex items-center gap-1 text-xs font-medium",
+                 saveStatus === 'error' ? 'text-red-500' : 'text-gray-400'
+               )}>
+                 {(isSaving || saveStatus === 'saving') ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
+                 ) : saveStatus === 'error' ? (
+                    <CloudOff className="w-3 h-3" />
                  ) : (
                     <Cloud className="w-3 h-3" />
                  )}
-                 <span className="hidden sm:inline">{isSaving ? '保存中...' : '保存済み'}</span>
+                 <span className="hidden sm:inline">
+                   {(isSaving || saveStatus === 'saving') ? '保存中...' : saveStatus === 'error' ? '未保存' : '保存済み'}
+                 </span>
                </div>
             )}
         </div>
