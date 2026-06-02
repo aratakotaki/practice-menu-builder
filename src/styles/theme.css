@@ -179,3 +179,15 @@
     line-height: 1.5;
   }
 }
+
+@media print {
+  /* Force category colours and other backgrounds to print on every browser.
+     Chrome / Edge / Android strip background colours by default — only Safari
+     prints them — which is why the PDF came out monochrome off iPhone. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

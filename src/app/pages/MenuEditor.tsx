@@ -942,7 +942,7 @@ export default function MenuEditor() {
       />
 
       <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        <div className="flex-1 overflow-y-auto print:overflow-visible pb-20"> {/* pb-20 for footer */}
+        <div className="flex-1 overflow-y-auto print:overflow-visible pb-28 md:pb-32 print:pb-0"> {/* generous bottom padding so the fixed footer never hides the last item */}
           <div className="max-w-[640px] mx-auto px-4 md:px-8 py-4 md:py-8 print:max-w-none print:px-8">
             <div className="mb-4 md:mb-6">
               <div className="flex items-start justify-between">
@@ -1034,13 +1034,13 @@ export default function MenuEditor() {
               ) : (
                 <div className="px-[14px] py-[12px] min-h-[52px] flex flex-col justify-center">
                   {noteTitle && (
-                    <p className="text-black"
+                    <p className="text-black whitespace-pre-wrap break-words"
                       style={{ fontSize: 12, fontFamily: 'Roboto, Noto Sans JP, sans-serif', fontWeight: 500, lineHeight: '20px' }}>
                       {noteTitle}
                     </p>
                   )}
                   {noteBody && (
-                    <p className="text-black"
+                    <p className="text-black whitespace-pre-wrap break-words"
                       style={{ fontSize: 12, fontFamily: 'Roboto, Noto Sans JP, sans-serif', fontWeight: 500, lineHeight: '20px' }}>
                       {noteBody}
                     </p>
@@ -1133,8 +1133,8 @@ export default function MenuEditor() {
                                 <div className="w-1.5 self-stretch rounded-full flex-shrink-0 my-1" style={{ backgroundColor: barColor }} />
                                 
                                 <div className="flex-1 min-w-0">
-                                  <h3 className="font-bold text-base text-gray-900 truncate">{item.name}</h3>
-                                  {item.description && <p className="text-xs text-gray-500 mt-0.5 truncate">{item.description}</p>}
+                                  <h3 className="font-bold text-base text-gray-900 break-words">{item.name}</h3>
+                                  {item.description && <p className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap break-words">{item.description}</p>}
                                 </div>
 
                                 <div className="flex gap-4 text-sm text-gray-600 flex-shrink-0 mr-2">
