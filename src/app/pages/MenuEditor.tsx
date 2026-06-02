@@ -371,7 +371,12 @@ export default function MenuEditor() {
   const [isSaving, setIsSaving] = useState(false);
   const [past, setPast] = useState<MenuState[]>([]);
   const [future, setFuture] = useState<MenuState[]>([]);
-  const [isHistoryAction, setIsHistoryAction] = useState(false); // Flag to prevent auto-save triggering on undo/redo immediately
+  // When true, the next auto-save effect run is skipped: the state change came from
+  // undo/redo or a server load, not a user edit, so it must not trigger a save.
+  const skipAutoSaveRef = useRef(false);
+  // Snapshot captured when the user starts editing a text field (title / note).
+  // Committed to history on blur, but only if the value actually changed.
+  const editStartSnapshotRef = useRef<MenuState | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedStateRef = useRef<string>('');
   
@@ -460,15 +465,28 @@ export default function MenuEditor() {
   }, [title, noteTitle, noteBody, baseDate, baseStartTime, items]);
 
   const applyState = (state: MenuState) => {
-    setIsHistoryAction(true);
+    // The upcoming state change is a programmatic restore (undo/redo/load), so flag
+    // the auto-save effect to skip exactly one run instead of persisting it.
+    skipAutoSaveRef.current = true;
     setTitle(state.title);
     setNoteTitle(state.noteTitle);
     setNoteBody(state.noteBody);
     setBaseDate(state.baseDate);
     setBaseStartTime(state.baseStartTime);
     setItems(state.items);
-    // Reset flag after a delay to allow effects to settle
-    setTimeout(() => setIsHistoryAction(false), 500);
+  };
+
+  // Commit a text-edit snapshot (captured on focus) to history, but only if the value
+  // actually changed. Prevents per-keystroke snapshots from flooding the undo stack.
+  const commitTextEditSnapshot = () => {
+    const snapshot = editStartSnapshotRef.current;
+    editStartSnapshotRef.current = null;
+    if (!snapshot) return;
+    setPast(prev => {
+      if (JSON.stringify(snapshot) === JSON.stringify(getCurrentState())) return prev;
+      return [...prev, snapshot];
+    });
+    setFuture([]);
   };
 
   const undo = () => {
@@ -496,13 +514,17 @@ export default function MenuEditor() {
   // Keyboard Shortcuts for Undo/Redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      // e.key is uppercase ('Z') while Shift is held, so normalise the case —
+      // otherwise Ctrl+Shift+Z (redo) never matches and silently does nothing.
+      const key = e.key.toLowerCase();
+      if (key === 'z') {
         e.preventDefault();
-        if (e.shiftKey) {
-          redo();
-        } else {
-          undo();
-        }
+        if (e.shiftKey) redo(); else undo();
+      } else if (key === 'y') {
+        // Ctrl+Y is the conventional redo shortcut on Windows.
+        e.preventDefault();
+        redo();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -511,7 +533,13 @@ export default function MenuEditor() {
 
   // Auto Save Logic
   useEffect(() => {
-    if (!isAutoSave || isHistoryAction || !user) return;
+    // A restore (undo/redo/load) sets this flag. Consume it and skip exactly one run
+    // so the restored state is not treated as a fresh user edit and re-saved.
+    if (skipAutoSaveRef.current) {
+      skipAutoSaveRef.current = false;
+      return;
+    }
+    if (!isAutoSave || !user) return;
 
     // Check if state actually changed from last saved
     const currentStateStr = JSON.stringify(getCurrentState());
@@ -526,7 +554,7 @@ export default function MenuEditor() {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [title, noteTitle, noteBody, baseDate, baseStartTime, items, isAutoSave, user, isHistoryAction]);
+  }, [title, noteTitle, noteBody, baseDate, baseStartTime, items, isAutoSave, user]);
 
 
   const handleLogout = async () => {
@@ -872,12 +900,12 @@ export default function MenuEditor() {
                   {isEditingTitle ? (
                     <input autoFocus value={title}
                       onChange={e => setTitle(e.target.value)}
-                      onBlur={() => { setIsEditingTitle(false); saveSnapshot(); }}
+                      onBlur={() => { setIsEditingTitle(false); commitTextEditSnapshot(); }}
                       className="bg-transparent outline-none"
                       style={{ fontSize: 24, fontFamily: 'MS Gothic, sans-serif' }}
                     />
                   ) : (
-                    <h1 onClick={() => setIsEditingTitle(true)}
+                    <h1 onClick={() => { editStartSnapshotRef.current = getCurrentState(); setIsEditingTitle(true); }}
                       className="cursor-pointer flex items-center gap-[6px]"
                       style={{ fontSize: 24, fontFamily: 'MS Gothic, sans-serif' }}>
                       {title}
@@ -927,7 +955,6 @@ export default function MenuEditor() {
                     type="time"
                     value={baseStartTime}
                     onChange={e => { saveSnapshot(); setBaseStartTime(e.target.value); }}
-                    onBlur={() => saveSnapshot()}
                     className="picker-input absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
                   />
                 </div>
@@ -936,13 +963,13 @@ export default function MenuEditor() {
 
             <div className="bg-white rounded-[7px] mb-4 md:mb-5 cursor-pointer print:mb-4"
               style={{ boxShadow: CARD_SHADOW }}
-              onClick={() => !isEditingNote && setIsEditingNote(true)}>
+              onClick={() => { if (!isEditingNote) { editStartSnapshotRef.current = getCurrentState(); setIsEditingNote(true); } }}>
               {isEditingNote ? (
                 <div className="px-[14px] py-3 min-h-[56px]"
                   onBlur={e => {
                     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
                         setIsEditingNote(false);
-                        saveSnapshot();
+                        commitTextEditSnapshot();
                     }
                   }}>
                   <input autoFocus value={noteTitle} onChange={e => setNoteTitle(e.target.value)}
