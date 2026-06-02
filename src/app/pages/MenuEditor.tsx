@@ -331,9 +331,15 @@ export default function MenuEditor() {
   // Read creation context passed from NewMenuModal (only relevant when no menuId in URL)
   const locationState = location.state as { newDate?: string; sourceMenu?: import('../types').Menu } | null;
   const sourceMenu = !menuId ? (locationState?.sourceMenu ?? null) : null;
-  const initialDate = !menuId && locationState?.newDate
-    ? new Date(locationState.newDate + 'T00:00:00')
-    : new Date();
+  // Derive the initial base date up front. If the menu is opened by a date-based id,
+  // start from that date — otherwise the editor briefly shows "today", and an early
+  // auto-save could write to today's key before the real menu finished loading.
+  const isDateId = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const initialDate = isDateId(menuId)
+    ? new Date(menuId + 'T00:00:00')
+    : (!menuId && locationState?.newDate
+        ? new Date(locationState.newDate + 'T00:00:00')
+        : new Date());
 
   // State
   const [items, setItems] = useState<TimelineItem[]>(() => {
@@ -379,7 +385,11 @@ export default function MenuEditor() {
   const editStartSnapshotRef = useRef<MenuState | null>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedStateRef = useRef<string>('');
-  
+  // Gate: auto-save stays disabled until the editor holds a known-good baseline —
+  // either an existing menu finished loading, or a new menu was initialised. This is
+  // what prevents the initial template/placeholder state from overwriting real data.
+  const isLoadedRef = useRef(false);
+
   // Helper to get current full state
   const getCurrentState = (): MenuState => ({
     title, noteTitle, noteBody, baseDate, baseStartTime, items
@@ -414,18 +424,31 @@ export default function MenuEditor() {
                     
                     applyState(loadedState);
                     lastSavedStateRef.current = JSON.stringify(loadedState);
+                    isLoadedRef.current = true; // baseline established -> auto-save may run
                  }
              } else {
                  console.error("Failed to fetch menu");
-                 toast.error("メニューの読み込みに失敗しました");
+                 // Keep auto-save disabled so a half-initialised editor never overwrites
+                 // the stored menu with placeholder data.
+                 toast.error("メニューの読み込みに失敗しました。自動保存を停止しました。再読み込みしてください。");
              }
           } catch (e) {
               console.error(e);
           }
       };
-      
+
       loadMenu();
   }, [menuId, user]);
+
+  // New menu (or duplicate-from-source): the initial state IS the baseline. Enable
+  // auto-save, but record the baseline so an untouched template is never saved on its own.
+  useEffect(() => {
+    if (!menuId) {
+      lastSavedStateRef.current = JSON.stringify(getCurrentState());
+      isLoadedRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -540,6 +563,9 @@ export default function MenuEditor() {
       return;
     }
     if (!isAutoSave || !user) return;
+    // Never auto-save before a known-good baseline exists (initial load / new-menu init).
+    // This is the core guard against the placeholder template clobbering real data.
+    if (!isLoadedRef.current) return;
 
     // Check if state actually changed from last saved
     const currentStateStr = JSON.stringify(getCurrentState());
