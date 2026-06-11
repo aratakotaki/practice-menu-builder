@@ -334,11 +334,20 @@ export default function MenuEditor() {
   // Derive the initial base date up front. If the menu is opened by a date-based id,
   // start from that date — otherwise the editor briefly shows "today", and an early
   // auto-save could write to today's key before the real menu finished loading.
+  //
+  // A "YYYY-MM-DD" string MUST be parsed as `new Date(s)` (UTC midnight), NOT
+  // `new Date(s + 'T00:00:00')` (local midnight). The server derives a menu's storage key
+  // from `baseDate.toISOString()` (UTC), while the client derives the menu id from
+  // `format(baseDate, 'yyyy-MM-dd')` (local). Local-midnight parsing makes those two
+  // disagree east of UTC (e.g. JST: local 6/11 00:00 -> 6/10 in UTC), so a menu created
+  // via NewMenuModal was saved under the previous day's key and 404'd on reload. UTC
+  // parsing keeps id and storage key on the same calendar date. This matches the date
+  // picker, which already uses `new Date(value)`.
   const isDateId = (s?: string) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
   const initialDate = isDateId(menuId)
-    ? new Date(menuId + 'T00:00:00')
+    ? new Date(menuId!)
     : (!menuId && locationState?.newDate
-        ? new Date(locationState.newDate + 'T00:00:00')
+        ? new Date(locationState.newDate)
         : new Date());
 
   // State

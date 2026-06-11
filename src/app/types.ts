@@ -6,39 +6,25 @@ export interface Category {
   color: string; // Tailwind class or hex
 }
 
+// A drill is one block of practice. Duration is per-set; total active time is computed as
+// (durationMin*60 + durationSec) * sets + restSeconds * (sets - 1), with prepTimeSeconds
+// added before the block. See the `timeline` memo in MenuEditor for the canonical formula.
 export interface Drill {
   id: string;
   name: string;
   categoryId: CategoryId;
-  durationSeconds: number; // Total duration including sets/reps if simple, or per set? 
-  // Requirement says: "Duration (MM:SS precise input), Sets, Rest Time".
-  // Let's assume duration is per set, or total?
-  // "Duration and Sets" are displayed on the right.
-  // "Auto-Time Calculation" implies we need total duration.
-  // Let's store base duration and sets.
-  // Total time = (duration * sets) + (rest * (sets - 1))? Or is duration total?
-  // Let's assume Duration is TOTAL active time or per set?
-  // The UI shows "02 min 00 sec" and "1 set".
-  // Usually, a drill has a fixed duration like "10 mins".
-  // If sets are involved, it might be "3 sets of 2 mins".
-  // Let's simplify: User inputs "Total Duration" for the block, or "Duration per set"?
-  // The screenshot shows: "02 - 00" for time, and "1" for set.
-  // If I have 1 set of 2 mins, total is 2 mins.
-  // If I have 3 sets of 2 mins, total is 6 mins + rest.
-  // Let's assume the input is "Duration per set".
   durationMin: number;
   durationSec: number;
   sets: number;
   restSeconds: number;
   description: string;
-  prepTimeSeconds: number; // "Prep Time (Inline)"
+  prepTimeSeconds: number; // idle time inserted before this block starts
 }
 
-// A drill instance in the timeline might be slightly different if we allow overriding?
-// For now, let's assume the timeline items are just Drills.
-// But we need a unique ID for the timeline in case the same drill is added twice.
+// A drill placed on the timeline. uniqueId keeps drag-and-drop keys stable even when the
+// same library drill is added more than once.
 export interface TimelineItem extends Drill {
-  uniqueId: string; // For drag and drop keys
+  uniqueId: string;
 }
 
 export interface Menu {
