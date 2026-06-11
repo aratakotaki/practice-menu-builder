@@ -3,26 +3,9 @@ import { useNavigate } from 'react-router';
 import { ArrowLeft, Loader2, PieChart as PieChartIcon, Menu as MenuIcon } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { supabase } from '../../lib/supabase';
-import { supabaseUrl, publicAnonKey } from '../../../utils/supabase/info';
+import { MENU_API, authHeaders } from '../../lib/api';
+import { catHex } from '../../lib/colors';
 import { Menu, CATEGORIES as INITIAL_CATEGORIES, Category, Drill } from '../types';
-
-// Map Tailwind colors to hex for Recharts
-const TAILWIND_TO_HEX: Record<string, string> = {
-  'bg-purple-500': '#A855F7',
-  'bg-orange-500': '#F97316',
-  'bg-blue-800': '#1E40AF',
-  'bg-green-600': '#16A34A',
-  'bg-red-600': '#DC2626',
-  'bg-gray-500': '#6B7280',
-  'bg-pink-500': '#EC4899',
-  'bg-indigo-500': '#6366F1',
-  'bg-teal-500': '#14B8A6',
-  'bg-yellow-500': '#EAB308',
-};
-
-function catHex(colorClass: string): string {
-  return TAILWIND_TO_HEX[colorClass] || '#cccccc';
-}
 
 interface ChartData {
   name: string;
@@ -54,13 +37,10 @@ export default function Analytics() {
 
   const fetchMenus = async (session: any) => {
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-User-Token': session.access_token
-        }
+      const res = await fetch(`${MENU_API}/menus`, {
+        headers: authHeaders(session.access_token)
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         if (data.menus) {
@@ -78,11 +58,8 @@ export default function Analytics() {
 
   const loadUserLibrary = async (session: any) => {
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/library`, {
-        headers: { 
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-User-Token': session.access_token
-        }
+      const res = await fetch(`${MENU_API}/library`, {
+        headers: authHeaders(session.access_token)
       });
       if (res.ok) {
         const data = await res.json();
@@ -127,7 +104,7 @@ export default function Analytics() {
       return {
         name: displayCategory ? displayCategory.name : '不明なカテゴリ',
         value: Math.round(minutes * 10) / 10, // Round to 1 decimal
-        color: displayCategory ? catHex(displayCategory.color) : '#cccccc'
+        color: displayCategory ? catHex(displayCategory.color, '#cccccc') : '#cccccc'
       };
     }).filter(d => d.value > 0);
     

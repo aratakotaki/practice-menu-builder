@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { Calendar, User, LogIn, Clock, ArrowRight, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { supabaseUrl, publicAnonKey } from '/utils/supabase/info';
+import { MENU_API, authHeaders } from '../../lib/api';
 import { Menu } from '../types';
 import { format, parseISO, isSameDay, startOfToday, isAfter } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -48,13 +48,10 @@ export default function Home() {
   const fetchMenus = async (session: any) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-User-Token': session.access_token
-        }
+      const res = await fetch(`${MENU_API}/menus`, {
+        headers: authHeaders(session.access_token)
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         if (data.menus) {

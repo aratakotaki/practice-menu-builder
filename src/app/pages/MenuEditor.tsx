@@ -9,8 +9,9 @@ import { twMerge } from 'tailwind-merge';
 import { LibraryManager } from '../components/LibraryManager';
 import { AuthModal } from '../components/AuthModal';
 import { SavedMenusModal } from '../components/SavedMenusModal';
-import { supabaseUrl, publicAnonKey } from '/utils/supabase/info';
 import { supabase } from '../../lib/supabase';
+import { MENU_API, authHeaders } from '../../lib/api';
+import { catHex } from '../../lib/colors';
 import { Toaster, toast } from 'sonner';
 import svgPaths from '../../imports/svg-gnadtnsjru';
 import { useParams, useNavigate, useLocation } from 'react-router';
@@ -25,22 +26,6 @@ function fmtDuration(min: number, sec: number) {
 }
 function fmtRest(sec: number) {
   return sec === 0 ? '00 sec' : `${sec} sec`;
-}
-
-const TAILWIND_TO_HEX: Record<string, string> = {
-  'bg-purple-500': '#A855F7',
-  'bg-orange-500': '#F97316',
-  'bg-blue-800': '#1E40AF',
-  'bg-green-600': '#16A34A',
-  'bg-red-600': '#DC2626',
-  'bg-gray-500': '#6B7280',
-  'bg-pink-500': '#EC4899',
-  'bg-indigo-500': '#6366F1',
-  'bg-teal-500': '#14B8A6',
-  'bg-yellow-500': '#EAB308',
-};
-function catHex(colorClass: string): string {
-  return TAILWIND_TO_HEX[colorClass] || '#1D1B20';
 }
 
 const DAYS_JA = ['日', '月', '火', '水', '木', '金', '土'];
@@ -415,11 +400,8 @@ export default function MenuEditor() {
              const { data: { session } } = await supabase.auth.getSession();
              if (!session) return;
 
-             const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus/${menuId}`, {
-                 headers: {
-                    'Authorization': `Bearer ${publicAnonKey}`,
-                    'X-User-Token': session.access_token
-                 }
+             const res = await fetch(`${MENU_API}/menus/${menuId}`, {
+                 headers: authHeaders(session.access_token)
              });
              
              if (res.ok) {
@@ -657,13 +639,9 @@ export default function MenuEditor() {
       // is in the URL) we always allow overwriting the same-date entry.
       const shouldAllowOverwrite = !isNew || !!menuId;
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
+      const response = await fetch(`${MENU_API}/menus`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-User-Token': session.access_token
-        },
+        headers: authHeaders(session.access_token, true),
         body: JSON.stringify({ menu: menuData, allowOverwrite: shouldAllowOverwrite })
       });
 
@@ -679,13 +657,9 @@ export default function MenuEditor() {
             return;
           }
           // User chose to overwrite – retry with allowOverwrite: true
-          const overwriteRes = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
+          const overwriteRes = await fetch(`${MENU_API}/menus`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}`,
-              'X-User-Token': session.access_token
-            },
+            headers: authHeaders(session.access_token, true),
             body: JSON.stringify({ menu: menuData, allowOverwrite: true })
           });
           if (!overwriteRes.ok) throw new Error(`Server error ${overwriteRes.status}`);
@@ -771,13 +745,10 @@ export default function MenuEditor() {
   };
 
   const loadUserLibrary = async (session: any) => {
-    if (!session || !supabaseUrl) return;
+    if (!session) return;
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/library`, {
-        headers: { 
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-User-Token': session.access_token
-        }
+      const res = await fetch(`${MENU_API}/library`, {
+        headers: authHeaders(session.access_token)
       });
       if (res.ok) {
         const data = await res.json();
@@ -795,16 +766,12 @@ export default function MenuEditor() {
     setCategories(newCats);
     setLibraryDrills(newDrills);
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session || !supabaseUrl) return;
-    
+    if (!session) return;
+
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/library`, {
+      const res = await fetch(`${MENU_API}/library`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-User-Token': session.access_token
-        },
+        headers: authHeaders(session.access_token, true),
         body: JSON.stringify({ categories: newCats, drills: newDrills })
       });
       
@@ -874,13 +841,9 @@ export default function MenuEditor() {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("No session");
 
-        const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
+        const res = await fetch(`${MENU_API}/menus`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${publicAnonKey}`,
-                'X-User-Token': session.access_token
-            },
+            headers: authHeaders(session.access_token, true),
             body: JSON.stringify({ menu: menuData, allowOverwrite: false })
         });
 
@@ -894,13 +857,9 @@ export default function MenuEditor() {
                 navigate(`/editor/${existingId}`);
             } else {
                 // Overwrite
-                const overwriteRes = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
+                const overwriteRes = await fetch(`${MENU_API}/menus`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${publicAnonKey}`,
-                        'X-User-Token': session.access_token
-                    },
+                    headers: authHeaders(session.access_token, true),
                     body: JSON.stringify({ menu: menuData, allowOverwrite: true })
                 });
                 if (!overwriteRes.ok) throw new Error("Failed to create new menu");

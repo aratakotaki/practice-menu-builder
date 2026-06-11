@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Loader2, BookOpen, Calendar, Clock, ChevronRight, Trash2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { supabaseUrl, publicAnonKey } from '../../../utils/supabase/info';
+import { MENU_API, authHeaders } from '../../lib/api';
 import { Menu } from '../types';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -25,17 +25,14 @@ export default function Library() {
   const fetchMenus = async (session: any) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus`, {
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-User-Token': session.access_token
-        }
+      const res = await fetch(`${MENU_API}/menus`, {
+        headers: authHeaders(session.access_token)
       });
-      
+
       if (res.ok) {
         const data = await res.json();
         if (data.menus) {
-          const sorted = (data.menus as Menu[]).sort((a, b) => 
+          const sorted = (data.menus as Menu[]).sort((a, b) =>
             new Date(b.baseDate).getTime() - new Date(a.baseDate).getTime()
           );
           setMenus(sorted);
@@ -56,12 +53,9 @@ export default function Library() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await fetch(`${supabaseUrl}/functions/v1/make-server-791d0b68/menus/${menuId}`, {
+      const res = await fetch(`${MENU_API}/menus/${menuId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${publicAnonKey}`,
-          'X-User-Token': session.access_token
-        }
+        headers: authHeaders(session.access_token)
       });
 
       if (res.ok) {
