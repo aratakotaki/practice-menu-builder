@@ -1379,7 +1379,12 @@ function EditDrillForm({ item, categories, onSave, onDelete }: {
   );
 
   return (
-    <div className="p-4 max-w-md mx-auto w-full h-full flex flex-col">
+    // min-h-0 (not h-full): the parent Drawer.Content only has max-h, so h-full resolves
+    // to auto and the form grows past the viewport on short screens (laptops / 125-150%
+    // Windows scaling) — the inner overflow-y-auto then never scrolls and the save/delete
+    // buttons end up unreachable. min-h-0 lets this flex item shrink to the drawer's cap
+    // so the middle section scrolls and the footer stays visible.
+    <div className="p-4 max-w-md mx-auto w-full min-h-0 flex flex-col">
       <div className="mx-auto w-12 h-1.5 rounded-full bg-gray-300 mb-5" />
       <div className="flex items-center gap-3 mb-5 px-1">
         <div className="w-1 h-6 rounded-full flex-shrink-0" style={{ backgroundColor: barColor }} />
